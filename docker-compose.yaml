@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  server:
+    # image: 'nginx:stable-alpine'
+    build:
+      context: .
+      dockerfile: dockerfiles/nginx.dockerfile
+    container_name: larafdb-nginx
+    ports:
+      - 8001:80
+    volumes:
+      - ./src:/var/www/html
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+      - mysql
+      - pma
+  php:
+    build:
+      context: .
+      dockerfile: dockerfiles/php.dockerfile
+    container_name: larafdb-php
+    volumes:
+      - ./src:/var/www/html:delegated
+      - ./php/conf.d/custom.ini:/usr/local/etc/php/conf.d/custom.ini
+  mysql:
+    # image: mysql:8.0 macOS m1 netinka
+    image: arm64v8/mysql:latest
+    container_name: larafdb-mysql
+    env_file:
+      - ./env/mysql.env
+    ports:
+      - 33061:3306
+  pma:
+    image: phpmyadmin
+    container_name: larafdb-pma
+    env_file:
+      - ./env/pma.env
+    environment:
+      - PMA_ARBITRARY=1
+    ports:
+      - 8002:80
+  composer:
+    build:
+      context: ./dockerfiles
+      dockerfile: composer.dockerfile
+    container_name: larafdb-composer
+    volumes:
+      - ./src:/var/www/html
+  artisan:
+    build:
+      context: .
+      dockerfile: dockerfiles/php.dockerfile
+    container_name: larafdb-artisan
+    volumes:
+      - ./src:/var/www/html
+    entrypoint: ['php', '/var/www/html/artisan']
+  npm:
+    image: node:latest
+    container_name: larafdb-npm
+    working_dir: /var/www/html
+    entrypoint: ['npm']
+    volumes:
+      - ./src:/var/www/html
